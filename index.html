@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trading Journal — Binance</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0d12;--bg2:#10121a;--bg3:#171a24;--bg4:#1e2230;
+  --border:#ffffff0f;--border2:#ffffff1a;--border3:#ffffff28;
+  --text:#dde1f0;--text2:#8589a0;--text3:#4a4e62;
+  --green:#00c97a;--green2:#00c97a15;--green3:#00c97a30;
+  --red:#ff4060;--red2:#ff406015;--red3:#ff406030;
+  --amber:#f0a500;--amber2:#f0a50015;--amber3:#f0a50030;
+  --blue:#3d8eff;--blue2:#3d8eff15;
+  --accent:#6c5ce7;--accent2:#6c5ce720;--accent3:#6c5ce740;
+  --cyan:#00cfe8;--cyan2:#00cfe815;
+  --radius:6px;--radius2:10px;--radius3:14px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;font-size:13px;line-height:1.5}
+.mono{font-family:'DM Mono',monospace}
+
+/* ── LAYOUT ── */
+.shell{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.topbar{
+  background:var(--bg2);border-bottom:1px solid var(--border2);
+  padding:0 20px;height:50px;display:flex;align-items:center;
+  justify-content:space-between;gap:12px;flex-shrink:0;
+}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-mark{width:24px;height:24px;border-radius:6px;background:var(--accent);display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:14px;height:14px}
+.logo-text{font-size:13px;font-weight:700;letter-spacing:0.06em;color:var(--text)}
+.logo-tag{font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border2);padding:2px 7px;border-radius:4px;font-family:'DM Mono',monospace;margin-left:4px}
+.nav{display:flex;gap:2px}
+.nav-btn{
+  display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:var(--radius);
+  font-size:11px;font-weight:600;letter-spacing:0.05em;cursor:pointer;border:none;
+  background:transparent;color:var(--text3);transition:all 0.15s;white-space:nowrap;
+}
+.nav-btn svg{width:13px;height:13px;opacity:0.6}
+.nav-btn:hover{color:var(--text2);background:var(--bg3)}
+.nav-btn.active{color:var(--accent);background:var(--accent2)}
+.nav-btn.active svg{opacity:1}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.conn-dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.conn-dot.ok{background:var(--green)}
+.conn-dot.err{background:var(--red)}
+.clock{font-size:11px;font-family:'DM Mono',monospace;color:var(--text3)}
+
+.main{flex:1;overflow-y:auto;padding:20px}
+
+/* ── PANELS ── */
+.panel{display:none;flex-direction:column;gap:16px;animation:fadeIn 0.2s ease}
+.panel.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── CARDS ── */
+.card{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius3);padding:16px 18px}
+.card-title{font-size:10px;font-weight:700;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+
+/* ── CONFIG BANNER ── */
+.config-banner{
+  background:linear-gradient(135deg,var(--accent2),var(--blue2));
+  border:1px solid var(--accent3);border-radius:var(--radius3);
+  padding:16px 18px;display:flex;align-items:flex-start;gap:14px;
+}
+.config-banner-icon{width:36px;height:36px;border-radius:8px;background:var(--accent);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.config-banner h3{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.config-banner p{font-size:11px;color:var(--text2);line-height:1.6}
+.config-form{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:flex-end}
+
+/* ── METRICS ── */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px 14px;position:relative;overflow:hidden}
+.metric::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.metric.green::before{background:var(--green)}
+.metric.red::before{background:var(--red)}
+.metric.amber::before{background:var(--amber)}
+.metric.accent::before{background:var(--accent)}
+.metric.cyan::before{background:var(--cyan)}
+.m-label{font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase;margin-bottom:5px}
+.m-value{font-family:'DM Mono',monospace;font-size:17px;font-weight:500;color:var(--text);line-height:1.2}
+.m-value.green{color:var(--green)}
+.m-value.red{color:var(--red)}
+.m-value.amber{color:var(--amber)}
+.m-sub{font-size:9px;color:var(--text3);margin-top:3px;font-family:'DM Mono',monospace}
+
+/* ── FORM ── */
+.fg{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:10px;margin-bottom:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field label{font-size:9px;font-weight:700;letter-spacing:0.1em;color:var(--text3);text-transform:uppercase}
+.field input,.field select,.field textarea{
+  background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);
+  padding:7px 10px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;
+  outline:none;transition:border-color 0.15s;width:100%;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent3)}
+.field select option{background:var(--bg3)}
+.field textarea{resize:vertical;min-height:56px;font-family:'Syne',sans-serif;font-size:12px}
+
+/* ── RISK BOX ── */
+.risk-box{
+  background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius2);
+  padding:12px 14px;margin-bottom:12px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;
+}
+.risk-item .rl{font-size:9px;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:3px}
+.risk-item .rv{font-family:'DM Mono',monospace;font-size:13px;font-weight:500;color:var(--text2)}
+.risk-item .rv.safe{color:var(--green)}
+.risk-item .rv.warn{color:var(--amber)}
+.risk-item .rv.bad{color:var(--red)}
+
+/* ── SENTIMENT ── */
+.sent-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.sent-btn{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid var(--border2);background:transparent;color:var(--text3);cursor:pointer;transition:all 0.15s;letter-spacing:0.04em}
+.sent-btn.bull{background:var(--green2);color:var(--green);border-color:var(--green3)}
+.sent-btn.bear{background:var(--red2);color:var(--red);border-color:var(--red3)}
+.sent-btn.neutral{background:var(--amber2);color:var(--amber);border-color:var(--amber3)}
+
+/* ── BUTTONS ── */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:8px 16px;border-radius:var(--radius);font-size:11px;font-weight:700;border:none;cursor:pointer;transition:all 0.15s;letter-spacing:0.05em;font-family:'Syne',sans-serif}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
+.btn-ghost{background:var(--bg3);color:var(--text2);border:1px solid var(--border2)}
+.btn-ghost:hover{border-color:var(--border3);color:var(--text)}
+.btn-danger{background:var(--red2);color:var(--red);border:1px solid var(--red3)}
+.btn-sm{padding:4px 10px;font-size:10px}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:700px}
+th{padding:8px 10px;text-align:left;font-size:9px;font-weight:700;letter-spacing:0.09em;color:var(--text3);text-transform:uppercase;background:var(--bg3);white-space:nowrap;border-bottom:1px solid var(--border2)}
+td{padding:9px 10px;font-size:11px;border-top:1px solid var(--border);font-family:'DM Mono',monospace;white-space:nowrap;color:var(--text2)}
+tr:hover td{background:#ffffff03}
+.pair-chip{display:inline-block;background:var(--accent2);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.05em;font-family:'Syne',sans-serif}
+.long{color:var(--green);font-weight:600}
+.short{color:var(--red);font-weight:600}
+.s-open{color:var(--amber);background:var(--amber2);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'Syne',sans-serif}
+.s-win{color:var(--green);background:var(--green2);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'Syne',sans-serif}
+.s-loss{color:var(--red);background:var(--red2);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'Syne',sans-serif}
+.s-be{color:var(--text2);background:var(--bg4);padding:2px 8px;border-radius:4px;font-size:9px;font-weight:700;font-family:'Syne',sans-serif}
+.pnl-pos{color:var(--green)}
+.pnl-neg{color:var(--red)}
+.empty{padding:32px;text-align:center;color:var(--text3);font-size:12px}
+
+/* ── CHECKLIST ── */
+.cl-list{display:flex;flex-direction:column;gap:5px}
+.cl-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--bg3);border-radius:var(--radius);border:1px solid var(--border);cursor:pointer;transition:all 0.15s}
+.cl-item:hover{border-color:var(--border2)}
+.cl-item.on{background:var(--green2);border-color:var(--green3)}
+.cl-box{width:15px;height:15px;border-radius:4px;border:1.5px solid var(--border2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.15s;font-size:9px;font-weight:700}
+.cl-item.on .cl-box{background:var(--green);border-color:var(--green);color:#000}
+.cl-text{font-size:12px;color:var(--text2);line-height:1.4}
+.cl-item.on .cl-text{color:var(--text3);text-decoration:line-through}
+
+/* ── SCREENING ── */
+.sig-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:14px}
+.sig-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:12px 14px}
+.sig-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.sig-title{font-size:10px;font-weight:700;letter-spacing:0.07em;color:var(--text2);text-transform:uppercase}
+.sig-link{font-size:9px;color:var(--accent);text-decoration:none;opacity:0.7}
+.sig-link:hover{opacity:1}
+.sig-select{width:100%;background:var(--bg2);border:1px solid var(--border2);border-radius:var(--radius);padding:6px 8px;color:var(--text);font-family:'Syne',sans-serif;font-size:11px;font-weight:600;outline:none;cursor:pointer}
+.sig-select:focus{border-color:var(--accent3)}
+.sig-hint{font-size:10px;color:var(--text3);margin-top:5px;line-height:1.4}
+
+.corr-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:4px}
+.corr-table th{padding:6px 8px;text-align:center;font-size:9px;font-weight:700;letter-spacing:0.07em;color:var(--text3);text-transform:uppercase;background:var(--bg3);border:1px solid var(--border)}
+.corr-table td{padding:6px 8px;text-align:center;border:1px solid var(--border);font-family:'DM Mono',monospace;font-size:11px;color:var(--text2)}
+.corr-table td:first-child{text-align:left;font-family:'Syne',sans-serif;font-weight:600;font-size:11px}
+.bull-cell{background:var(--green2);color:var(--green);font-weight:700}
+.bear-cell{background:var(--red2);color:var(--red);font-weight:700}
+.warn-cell{background:var(--amber2);color:var(--amber);font-weight:700}
+.neutral-cell{background:var(--bg3);color:var(--text2)}
+
+.signal-result{
+  border-radius:var(--radius2);padding:14px 16px;
+  display:flex;align-items:center;gap:12px;margin-top:14px;
+  border:1px solid;
+}
+.signal-result.bull{background:var(--green2);border-color:var(--green3)}
+.signal-result.bear{background:var(--red2);border-color:var(--red3)}
+.signal-result.warn{background:var(--amber2);border-color:var(--amber3)}
+.signal-result.neutral{background:var(--bg3);border-color:var(--border2)}
+.sig-icon{font-size:22px;flex-shrink:0}
+.sig-body h3{font-size:13px;font-weight:700}
+.sig-body p{font-size:11px;opacity:0.8;margin-top:2px;line-height:1.5}
+.signal-result.bull .sig-body h3{color:var(--green)}
+.signal-result.bear .sig-body h3{color:var(--red)}
+.signal-result.warn .sig-body h3{color:var(--amber)}
+.signal-result.neutral .sig-body h3{color:var(--text2)}
+
+.watchlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.wl-chip{display:flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border2);border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;color:var(--text2)}
+.wl-remove{cursor:pointer;color:var(--text3);font-size:12px;line-height:1;border:none;background:none;padding:0;margin-left:2px}
+.wl-remove:hover{color:var(--red)}
+
+/* ── TABS (secondary) ── */
+.tabs2{display:flex;gap:4px;margin-bottom:14px}
+.tab2{padding:5px 12px;border-radius:var(--radius);font-size:10px;font-weight:700;letter-spacing:0.05em;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--text3);transition:all 0.15s}
+.tab2.active{background:var(--accent2);color:var(--accent);border-color:var(--accent3)}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--bg2);border:1px solid var(--border3);color:var(--text);padding:10px 16px;border-radius:var(--radius2);font-size:12px;font-weight:600;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none;z-index:9999;max-width:280px;box-shadow:0 4px 24px #00000040}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{border-left:3px solid var(--green)}
+.toast.err{border-left:3px solid var(--red)}
+
+/* ── CLOSE FORM ── */
+.close-panel{background:var(--bg2);border:1px solid var(--amber3);border-radius:var(--radius3);padding:16px 18px;display:none;animation:fadeIn 0.2s ease}
+
+/* ── FILTER ROW ── */
+.filter-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.f-btn{padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;border:1px solid var(--border);background:transparent;color:var(--text3);cursor:pointer;letter-spacing:0.04em;transition:all 0.15s}
+.f-btn.active{background:var(--accent2);color:var(--accent);border-color:var(--accent3)}
+
+/* ── SETUP MODAL ── */
+#setup-modal{display:none;position:fixed;inset:0;background:#000000a0;z-index:1000;align-items:center;justify-content:center;padding:20px}
+#setup-modal.show{display:flex}
+.modal-box{background:var(--bg2);border:1px solid var(--border3);border-radius:var(--radius3);padding:24px;max-width:480px;width:100%}
+.modal-box h2{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal-box p{font-size:12px;color:var(--text2);margin-bottom:18px;line-height:1.6}
+.modal-field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.modal-field label{font-size:9px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3)}
+.modal-field input{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius);padding:9px 12px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;width:100%}
+.modal-field input:focus{border-color:var(--accent3)}
+.modal-note{font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;line-height:1.6;margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setup-modal">
+  <div class="modal-box">
+    <h2>⚡ Setup Koneksi Supabase</h2>
+    <p>Masukkan kredensial Supabase kamu. Dapat ditemukan di <strong>Project Settings → API</strong> di dashboard Supabase.</p>
+    <div class="modal-field">
+      <label>Supabase URL</label>
+      <input type="text" id="cfg-url" placeholder="https://xxxx.supabase.co">
+    </div>
+    <div class="modal-field">
+      <label>Anon / Public Key</label>
+      <input type="text" id="cfg-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...">
+    </div>
+    <div class="modal-note">
+      🔒 Kredensial disimpan di localStorage browser kamu saja — tidak dikirim ke mana-mana selain Supabase milikmu sendiri.<br>
+      📋 Jalankan SQL schema di file <code>schema.sql</code> dulu sebelum koneksi.
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="connectSupabase()">Sambungkan</button>
+      <button class="btn btn-ghost" onclick="useLocalMode()">Pakai Local saja</button>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="logo">
+      <div class="logo-mark">
+        <svg viewBox="0 0 14 14" fill="none"><path d="M7 1L12 4V10L7 13L2 10V4L7 1Z" stroke="white" stroke-width="1.2" fill="none"/><circle cx="7" cy="7" r="2" fill="white"/></svg>
+      </div>
+      <span class="logo-text">TRADING JOURNAL</span>
+      <span class="logo-tag">BINANCE</span>
+    </div>
+    <nav class="nav">
+      <button class="nav-btn active" onclick="nav('dashboard',this)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="8" y="1" width="5" height="5" rx="1"/><rect x="1" y="8" width="5" height="5" rx="1"/><rect x="8" y="8" width="5" height="5" rx="1"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-btn" onclick="nav('screening',this)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="7" cy="7" r="5"/><path d="M7 4v3l2 1.5"/></svg>
+        Screening
+      </button>
+      <button class="nav-btn" onclick="nav('entry',this)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7 2v10M2 7h10"/></svg>
+        Entry
+      </button>
+      <button class="nav-btn" onclick="nav('history',this)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 3h10M2 7h7M2 11h5"/></svg>
+        History
+      </button>
+      <button class="nav-btn" onclick="nav('checklist',this)">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4l2.5 2.5L9 3M2 9l2.5 2.5L9 8"/></svg>
+        Pre-Trade
+      </button>
+    </nav>
+    <div class="topbar-right">
+      <div class="conn-dot" id="conn-dot"></div>
+      <span class="clock mono" id="clock">--:--</span>
+      <button class="btn btn-ghost btn-sm" onclick="openSetup()">⚙ Setup</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div id="p-dashboard" class="panel active">
+      <div class="metrics" id="dash-metrics">
+        <div class="metric accent"><div class="m-label">Modal</div><div class="m-value mono" id="d-modal">—</div><div class="m-sub">starting capital</div></div>
+        <div class="metric"><div class="m-label">Total Trade</div><div class="m-value" id="d-total">0</div><div class="m-sub">semua waktu</div></div>
+        <div class="metric"><div class="m-label">Win Rate</div><div class="m-value" id="d-wr">—</div><div class="m-sub" id="d-wr-sub">—W / —L</div></div>
+        <div class="metric"><div class="m-label">Net P&L</div><div class="m-value mono" id="d-pnl">Rp 0</div><div class="m-sub" id="d-pnl-sub">total</div></div>
+        <div class="metric amber"><div class="m-label">Maks Loss/Trade</div><div class="m-value amber mono" id="d-maxloss">—</div><div class="m-sub">2% modal</div></div>
+        <div class="metric"><div class="m-label">Status Hari Ini</div><div class="m-value" id="d-status" style="font-size:12px">—</div><div class="m-sub" id="d-status-sub">—</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Inisialisasi Modal</div>
+        <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+          <div class="field" style="flex:1;min-width:160px"><label>Modal Awal (Rp)</label><input type="number" id="modal-inp" placeholder="contoh: 1000000"></div>
+          <button class="btn btn-primary" onclick="setModal()">Simpan Modal</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">5 Trade Terakhir</div>
+        <div id="recent-tbl"><div class="empty">Belum ada trade. Mulai dari tab Entry.</div></div>
+      </div>
+    </div>
+
+    <!-- ═══ SCREENING ═══ -->
+    <div id="p-screening" class="panel">
+      <div class="card">
+        <div class="card-title">Market Screening — Sebelum Pilih Pair</div>
+
+        <div class="sig-grid">
+          <div class="sig-card">
+            <div class="sig-head"><span class="sig-title">Setup Bitcoin</span></div>
+            <select class="sig-select" id="sc-btc" onchange="calcSignal()">
+              <option value="">— pilih —</option>
+              <option value="bullish">Bullish</option>
+              <option value="bearish">Bearish</option>
+              <option value="sideways">Sideways</option>
+            </select>
+            <div class="sig-hint">Lihat chart BTC/USDT 1D — trend keseluruhan.</div>
+          </div>
+
+          <div class="sig-card">
+            <div class="sig-head"><span class="sig-title">BTC Dominance</span><a class="sig-link" href="https://coinmarketcap.com/charts/" target="_blank">CoinMarketCap ↗</a></div>
+            <select class="sig-select" id="sc-dom" onchange="calcSignal()">
+              <option value="">— pilih —</option>
+              <option value="naik">Naik</option>
+              <option value="naik-drastis">Naik Drastis</option>
+              <option value="turun">Turun</option>
+              <option value="turun-drastis">Turun Drastis</option>
+              <option value="stabil">Stabil</option>
+            </select>
+            <div class="sig-hint">BTC.D naik → alts melemah. BTC.D turun → alt season potensi.</div>
+          </div>
+
+          <div class="sig-card">
+            <div class="sig-head"><span class="sig-title">US Pre-Market</span></div>
+            <select class="sig-select" id="sc-us" onchange="calcSignal()">
+              <option value="">— pilih —</option>
+              <option value="hijau">Hijau (positif)</option>
+              <option value="merah">Merah (negatif)</option>
+              <option value="flat">Flat/mixed</option>
+            </select>
+            <div class="sig-hint">Cek pre-market US sebelum sesi malam (buka 22.00 WIB). Korelasi kuat dengan BTC.</div>
+          </div>
+
+          <div class="sig-card">
+            <div class="sig-head"><span class="sig-title">Funding Rate</span><a class="sig-link" href="https://www.coinglass.com/FundingRate" target="_blank">Coinglass ↗</a></div>
+            <select class="sig-select" id="sc-fund" onchange="calcSignal()">
+              <option value="">— pilih —</option>
+              <option value="positif-tinggi">Positif Tinggi (&gt;0.1%)</option>
+              <option value="positif-normal">Positif Normal (0–0.1%)</option>
+              <option value="negatif">Negatif</option>
+            </select>
+            <div class="sig-hint">Funding tinggi = market terlalu bullish, potensi reversal. Negatif = banyak short, squeeze mungkin.</div>
+          </div>
+
+          <div class="sig-card">
+            <div class="sig-head"><span class="sig-title">Open Interest</span><a class="sig-link" href="https://www.coinglass.com/OpenInterest" target="_blank">Coinglass ↗</a></div>
+            <select class="sig-select" id="sc-oi" onchange="calcSignal()">
+              <option value="">— pilih —</option>
+              <option value="naik">Naik (uang masuk)</option>
+              <option value="turun">Turun (uang keluar)</option>
+              <option value="stabil">Stabil</option>
+            </select>
+            <div class="sig-hint">OI naik + harga naik = trend kuat. OI turun + harga naik = waspadai reversal.</div>
+          </div>
+
+          <div class="sig-card">
+            <div class="sig-head"><span class="sig-title">Long/Short Ratio</span><a class="sig-link" href="https://www.coinglass.com/LongShortRatio" target="_blank">Coinglass ↗</a></div>
+            <select class="sig-select" id="sc-ls" onchange="calcSignal()">
+              <option value="">— pilih —</option>
+              <option value="dominan-long">Long dominan (&gt;60%)</option>
+              <option value="seimbang">Seimbang (40-60%)</option>
+              <option value="dominan-short">Short dominan (&gt;60%)</option>
+            </select>
+            <div class="sig-hint">Extreme long ratio = rawan long squeeze. Extreme short = rawan short squeeze.</div>
+          </div>
+        </div>
+
+        <!-- Signal Result -->
+        <div id="signal-result" class="signal-result neutral" style="display:none">
+          <div class="sig-icon" id="sig-icon">—</div>
+          <div class="sig-body"><h3 id="sig-title">—</h3><p id="sig-desc">—</p></div>
+        </div>
+      </div>
+
+      <!-- Correlation Tables -->
+      <div class="card">
+        <div class="card-title">Tabel Referensi Korelasi</div>
+        <div class="tabs2">
+          <button class="tab2 active" onclick="showCorrTab('btc',this)">BTC Setup</button>
+          <button class="tab2" onclick="showCorrTab('stock',this)">US Stock</button>
+          <button class="tab2" onclick="showCorrTab('dom',this)">BTC Dominance</button>
+        </div>
+
+        <div id="corr-btc">
+          <table class="corr-table">
+            <tr><th>Setup Altcoin</th><th>Setup Bitcoin</th><th>Probabilitas</th></tr>
+            <tr><td>🟢 Bullish</td><td>🟢 Bullish</td><td class="bull-cell">Long Max</td></tr>
+            <tr><td>🟢 Bullish</td><td>🟡 Sideways</td><td class="bull-cell">Long Max</td></tr>
+            <tr><td>🟢 Bullish</td><td>🔴 Bearish</td><td class="warn-cell">Waspada</td></tr>
+            <tr><td>🔴 Bearish</td><td>🔴 Bearish</td><td class="bear-cell">Short Max</td></tr>
+            <tr><td>🔴 Bearish</td><td>🟡 Sideways</td><td class="bear-cell">Short</td></tr>
+            <tr><td>🔴 Bearish</td><td>🟢 Bullish</td><td class="warn-cell">Awas Ketarik</td></tr>
+          </table>
+        </div>
+
+        <div id="corr-stock" style="display:none">
+          <table class="corr-table">
+            <tr><th>Setup Altcoin</th><th>US Pre-Market</th><th>Probabilitas</th></tr>
+            <tr><td>🟢 Bullish</td><td>🟢 Hijau</td><td class="bull-cell">70% BTC Hijau, 50% Altcoin berhasil</td></tr>
+            <tr><td>🟢 Bullish</td><td>🔴 Merah</td><td class="warn-cell">70% BTC Merah, 20% Altcoin berhasil</td></tr>
+            <tr><td>🔴 Bearish</td><td>🔴 Merah</td><td class="bear-cell">70% BTC Merah, 50% Altcoin berhasil</td></tr>
+            <tr><td>🔴 Bearish</td><td>🟢 Hijau</td><td class="warn-cell">70% BTC Hijau, 20% Altcoin berhasil</td></tr>
+          </table>
+        </div>
+
+        <div id="corr-dom" style="display:none">
+          <table class="corr-table">
+            <tr><th>BTC.D</th><th>BTC</th><th>ALTS</th></tr>
+            <tr><td>📈 Naik</td><td class="bull-cell">Naik</td><td class="bear-cell">Turun</td></tr>
+            <tr><td>📈 Naik Drastis</td><td class="bull-cell">Naik Stabil</td><td class="bear-cell">Turun Drastis</td></tr>
+            <tr><td>📉 Turun</td><td class="neutral-cell">Turun</td><td class="bull-cell">Naik Naik Drastis</td></tr>
+            <tr><td>📉 Turun</td><td class="neutral-cell">Stabil</td><td class="bull-cell">Naik</td></tr>
+            <tr><td>➡ Stabil</td><td class="neutral-cell">Stabil</td><td class="neutral-cell">Stabil</td></tr>
+          </table>
+          <div style="font-size:10px;color:var(--text3);margin-top:8px">💡 BTC.D turun + BTC stabil/naik = Alt Season. BTC.D naik + semua turun = market risk-off, hati-hati.</div>
+        </div>
+      </div>
+
+      <!-- Watchlist -->
+      <div class="card">
+        <div class="card-title">Watchlist Pair Hari Ini</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <div class="field" style="flex:1"><label>Tambah Pair</label><input type="text" id="wl-input" placeholder="contoh: SOL/USDT" onkeydown="if(event.key==='Enter')addWl()"></div>
+          <div style="align-self:flex-end"><button class="btn btn-primary" onclick="addWl()">Tambah</button></div>
+        </div>
+        <div class="watchlist" id="watchlist"></div>
+        <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="saveScreening()">💾 Simpan Screening</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ ENTRY ═══ -->
+    <div id="p-entry" class="panel">
+      <div class="card">
+        <div class="card-title">Entry Trade Baru</div>
+        <div class="fg">
+          <div class="field">
+            <label>Pair</label>
+            <select id="f-pair">
+              <option>BTC/USDT</option><option>ETH/USDT</option><option>BNB/USDT</option>
+              <option>SOL/USDT</option><option>XRP/USDT</option><option>DOGE/USDT</option>
+              <option>AVAX/USDT</option><option>Other</option>
+            </select>
+          </div>
+          <div class="field"><label>Pair Custom</label><input type="text" id="f-pair-custom" placeholder="AVAX/USDT"></div>
+          <div class="field">
+            <label>Arah</label>
+            <select id="f-dir">
+              <option value="LONG">LONG (beli)</option>
+              <option value="SHORT">SHORT (jual)</option>
+            </select>
+          </div>
+          <div class="field"><label>Harga Entry (USDT)</label><input type="number" id="f-entry" placeholder="0.00" oninput="calcRisk()"></div>
+          <div class="field"><label>Stop Loss (USDT)</label><input type="number" id="f-sl" placeholder="0.00" oninput="calcRisk()"></div>
+          <div class="field"><label>Take Profit (USDT)</label><input type="number" id="f-tp" placeholder="0.00" oninput="calcRisk()"></div>
+          <div class="field">
+            <label>Leverage</label>
+            <select id="f-lev" onchange="calcRisk()">
+              <option value="1">1× Spot</option><option value="2">2×</option>
+              <option value="3">3×</option><option value="5">5×</option><option value="10">10×</option>
+            </select>
+          </div>
+          <div class="field"><label>Ukuran Posisi (Rp)</label><input type="number" id="f-size" placeholder="0" oninput="calcRisk()"></div>
+          <div class="field">
+            <label>Timeframe</label>
+            <select id="f-tf"><option>1H</option><option>4H</option><option selected>1D</option><option>1W</option></select>
+          </div>
+          <div class="field">
+            <label>Setup</label>
+            <select id="f-setup">
+              <option>Support/Resistance</option><option>Breakout</option>
+              <option>Trend Following</option><option>Reversal</option>
+              <option>News/Fundamental</option><option>Other</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Kondisi Market</label>
+            <select id="f-market"><option>Uptrend</option><option>Downtrend</option><option>Sideways</option><option>High Volatility</option></select>
+          </div>
+        </div>
+
+        <div class="risk-box">
+          <div class="risk-item"><div class="rl">Risk (Rp)</div><div class="rv" id="r-risk">—</div></div>
+          <div class="risk-item"><div class="rl">% dari modal</div><div class="rv" id="r-pct">—</div></div>
+          <div class="risk-item"><div class="rl">Potensi profit</div><div class="rv" id="r-profit">—</div></div>
+          <div class="risk-item"><div class="rl">Risk/Reward</div><div class="rv" id="r-rr">—</div></div>
+          <div class="risk-item"><div class="rl">Status</div><div class="rv" id="r-status">—</div></div>
+        </div>
+
+        <div class="field" style="margin-bottom:10px">
+          <label>Sentimen</label>
+          <div class="sent-row" id="sent-row">
+            <button class="sent-btn" onclick="setSentiment('Bullish',this)">Bullish</button>
+            <button class="sent-btn" onclick="setSentiment('Netral',this)">Netral</button>
+            <button class="sent-btn" onclick="setSentiment('Bearish',this)">Bearish</button>
+          </div>
+        </div>
+
+        <div class="field" style="margin-bottom:14px">
+          <label>Catatan / Alasan Entry</label>
+          <textarea id="f-notes" placeholder="Kenapa kamu masuk trade ini? Apa yang kamu lihat di chart?"></textarea>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addTrade()">💾 Simpan Trade</button>
+          <button class="btn btn-ghost" onclick="clearForm()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ HISTORY ═══ -->
+    <div id="p-history" class="panel">
+      <div class="filter-row">
+        <button class="f-btn active" onclick="filterTrades('all',this)">Semua</button>
+        <button class="f-btn" onclick="filterTrades('open',this)">Open</button>
+        <button class="f-btn" onclick="filterTrades('win',this)">Win</button>
+        <button class="f-btn" onclick="filterTrades('loss',this)">Loss</button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div class="tbl-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Tanggal</th><th>Pair</th><th>Dir</th><th>Entry</th>
+                <th>SL</th><th>TP</th><th>Lev</th><th>R/R</th>
+                <th>P&L</th><th>Status</th><th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="trade-tbody">
+              <tr><td colspan="11"><div class="empty">Belum ada trade.</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="close-panel" id="close-panel">
+        <div class="card-title" style="margin-bottom:12px">Tutup Posisi</div>
+        <div class="fg">
+          <div class="field"><label>Harga Exit (USDT)</label><input type="number" id="f-exit" placeholder="0.00"></div>
+          <div class="field">
+            <label>Hasil</label>
+            <select id="f-result">
+              <option value="WIN">Take Profit / Win</option>
+              <option value="LOSS">Stop Loss / Loss</option>
+              <option value="BE">Break Even</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" style="margin-bottom:12px">
+          <label>Refleksi</label>
+          <textarea id="f-reflection" placeholder="Apa yang bisa dipelajari dari trade ini?"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="closeTrade()">Konfirmasi Tutup</button>
+          <button class="btn btn-ghost" onclick="cancelClose()">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ CHECKLIST ═══ -->
+    <div id="p-checklist" class="panel">
+      <div class="card">
+        <div class="card-title">Pre-Trade Checklist — Wajib Sebelum Entry</div>
+        <div class="cl-list" id="cl-list">
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Sudah lihat chart BTC/USDT 1D dan 4H untuk trend keseluruhan?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Level support/resistance sudah ditandai di chart?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Cek BTC Dominance — apakah mendukung altcoin?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Cek Funding Rate di Coinglass — tidak ekstrem positif atau negatif?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Stop loss sudah ditentukan SEBELUM entry?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Risk per trade tidak lebih dari 2% modal?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Risk/Reward ratio minimal 1:2?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Tidak ada news besar / event makro dalam 4 jam ke depan?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Trade ini sesuai setup yang sudah kamu pelajari — bukan FOMO?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Kamu dalam kondisi emosi stabil? Bukan marah/takut/greedy?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Total loss hari ini belum menyentuh 10% modal mingguan?</div></div>
+          <div class="cl-item" onclick="toggleCl(this)"><div class="cl-box"></div><div class="cl-text">Kalau trade ini loss, apakah masih bisa tidur nyenyak?</div></div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--text3)"><span id="cl-count" class="mono">0</span>/12 terpenuhi</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost btn-sm" onclick="resetCl()">Reset</button>
+            <button class="btn btn-primary btn-sm" id="cl-go-btn" style="display:none" onclick="nav('entry',document.querySelectorAll('.nav-btn')[2])">Lanjut ke Entry ↗</button>
+          </div>
+        </div>
+        <div id="cl-warn" style="margin-top:10px;padding:10px 12px;background:var(--red2);border:1px solid var(--red3);border-radius:var(--radius);font-size:11px;color:var(--red);display:none">
+          Belum semua checklist terpenuhi. Semua poin harus hijau sebelum entry.
+        </div>
+        <div id="cl-ok" style="margin-top:10px;padding:10px 12px;background:var(--green2);border:1px solid var(--green3);border-radius:var(--radius);font-size:11px;color:var(--green);display:none">
+          ✓ Semua checklist terpenuhi. Siap untuk entry dengan disiplin.
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIG ──
+let SB = null;
+let cfg = JSON.parse(localStorage.getItem('tj_cfg')||'{}');
+let trades = JSON.parse(localStorage.getItem('tj_trades')||'[]');
+let modal = parseFloat(localStorage.getItem('tj_modal')||'0');
+let sentiment = '';
+let closingId = null;
+let watchlist = JSON.parse(localStorage.getItem('tj_wl')||'[]');
+
+// ── INIT ──
+window.onload = async () => {
+  tick();setInterval(tick,1000);
+  renderWatchlist();
+  if(cfg.url && cfg.key){
+    await initSupabase(cfg.url, cfg.key);
+    await loadFromSupabase();
+  } else {
+    document.getElementById('setup-modal').classList.add('show');
+  }
+  updateDash();
+};
+
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=
+    n.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ── SUPABASE ──
+async function initSupabase(url,key){
+  try{
+    SB = supabase.createClient(url,key);
+    const {error}=await SB.from('tj_trades').select('id').limit(1);
+    if(error)throw error;
+    setConn(true);
+    return true;
+  }catch(e){
+    SB=null;setConn(false);return false;
+  }
+}
+
+function setConn(ok){
+  document.getElementById('conn-dot').className='conn-dot '+(ok?'ok':'err');
+}
+
+async function connectSupabase(){
+  const url=document.getElementById('cfg-url').value.trim();
+  const key=document.getElementById('cfg-key').value.trim();
+  if(!url||!key){toast('URL dan Key wajib diisi','err');return}
+  const ok=await initSupabase(url,key);
+  if(ok){
+    cfg={url,key};
+    localStorage.setItem('tj_cfg',JSON.stringify(cfg));
+    document.getElementById('setup-modal').classList.remove('show');
+    await loadFromSupabase();
+    toast('Supabase tersambung ✓','ok');
+  }else{
+    toast('Gagal konek — cek URL dan Key','err');
+  }
+}
+
+function useLocalMode(){
+  document.getElementById('setup-modal').classList.remove('show');
+  toast('Mode lokal — data di browser saja');
+}
+
+function openSetup(){document.getElementById('setup-modal').classList.add('show')}
+
+async function loadFromSupabase(){
+  if(!SB)return;
+  try{
+    // Load modal
+    const {data:s}=await SB.from('tj_settings').select('*').eq('user_id','default').single();
+    if(s){modal=parseFloat(s.modal)||0;localStorage.setItem('tj_modal',modal)}
+    // Load trades
+    const {data:t}=await SB.from('tj_trades').select('*').order('created_at',{ascending:false});
+    if(t){
+      trades=t.map(r=>({
+        id:r.id,date:r.date,pair:r.pair,dir:r.direction,entry:r.entry_price,
+        sl:r.stop_loss,tp:r.take_profit,leverage:r.leverage,size:r.position_size,
+        tf:r.timeframe,setup:r.setup,market:r.market_condition,sentiment:r.sentiment,
+        notes:r.notes,status:r.status,result:r.result,exitPrice:r.exit_price,
+        pnl:r.pnl,reflection:r.reflection
+      }));
+      localStorage.setItem('tj_trades',JSON.stringify(trades));
+    }
+    updateDash();
+  }catch(e){console.warn('Load error',e)}
+}
+
+async function saveTrade(t){
+  if(!SB)return;
+  try{
+    await SB.from('tj_trades').insert({
+      user_id:'default',date:t.date,pair:t.pair,direction:t.dir,
+      entry_price:t.entry,stop_loss:t.sl,take_profit:t.tp||null,
+      leverage:t.leverage,position_size:t.size||null,timeframe:t.tf,
+      setup:t.setup,market_condition:t.market,sentiment:t.sentiment,
+      notes:t.notes,status:'OPEN'
+    });
+  }catch(e){console.warn('Save error',e)}
+}
+
+async function updateTradeInDB(id,data){
+  if(!SB)return;
+  try{
+    const map={status:data.status,result:data.result,exit_price:data.exitPrice,pnl:data.pnl,reflection:data.reflection,updated_at:new Date().toISOString()};
+    await SB.from('tj_trades').update(map).eq('id',id);
+  }catch(e){console.warn(e)}
+}
+
+async function saveModalToDB(v){
+  if(!SB)return;
+  try{
+    const {data:s}=await SB.from('tj_settings').select('id').eq('user_id','default').single();
+    if(s){await SB.from('tj_settings').update({modal:v,updated_at:new Date().toISOString()}).eq('user_id','default')}
+    else{await SB.from('tj_settings').insert({user_id:'default',modal:v})}
+  }catch(e){console.warn(e)}
+}
+
+async function saveScreening(){
+  const data={
+    user_id:'default',date:new Date().toISOString(),
+    btc_setup:document.getElementById('sc-btc').value,
+    btc_dominance_trend:document.getElementById('sc-dom').value,
+    us_premarket:document.getElementById('sc-us').value,
+    funding_rate:document.getElementById('sc-fund').value,
+    open_interest:document.getElementById('sc-oi').value,
+    long_short_ratio:document.getElementById('sc-ls').value,
+    pairs_watchlist:JSON.stringify(watchlist)
+  };
+  if(SB){
+    try{await SB.from('tj_screening').insert(data);toast('Screening tersimpan ke Supabase ✓','ok')}
+    catch(e){toast('Gagal simpan ke DB','err')}
+  }else{
+    localStorage.setItem('tj_screening_last',JSON.stringify(data));
+    toast('Screening tersimpan lokal ✓','ok');
+  }
+}
+
+// ── LOCAL SAVE ──
+function save(){localStorage.setItem('tj_trades',JSON.stringify(trades));localStorage.setItem('tj_modal',modal)}
+
+// ── NAV ──
+function nav(name,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('p-'+name).classList.add('active');
+  if(el)el.classList.add('active');
+  if(name==='dashboard')updateDash();
+  if(name==='history')renderTable('all');
+}
+
+// ── MODAL ──
+async function setModal(){
+  const v=parseFloat(document.getElementById('modal-inp').value);
+  if(!v||v<=0){toast('Modal tidak valid','err');return}
+  modal=v;save();await saveModalToDB(v);updateDash();
+  toast('Modal disimpan: '+fmt(v),'ok');
+}
+
+// ── FORMAT ──
+function fmt(v){return 'Rp '+Math.round(v).toLocaleString('id-ID')}
+function fmtN(v){return parseFloat(v).toLocaleString('id-ID',{maximumFractionDigits:2})}
+
+// ── DASHBOARD ──
+function updateDash(){
+  document.getElementById('d-modal').textContent=modal>0?fmt(modal):'Set modal';
+  const closed=trades.filter(t=>t.status!=='OPEN');
+  const wins=closed.filter(t=>t.result==='WIN').length;
+  const losses=closed.filter(t=>t.result==='LOSS').length;
+  document.getElementById('d-total').textContent=trades.length;
+  const wrEl=document.getElementById('d-wr');
+  wrEl.textContent=closed.length?Math.round(wins/closed.length*100)+'%':'—';
+  wrEl.className='m-value'+(wins>losses?' green':losses>wins?' red':'');
+  document.getElementById('d-wr-sub').textContent=wins+'W / '+losses+'L';
+  const totalPnl=closed.reduce((a,t)=>a+(t.pnl||0),0);
+  const pnlEl=document.getElementById('d-pnl');
+  pnlEl.textContent=fmt(totalPnl);
+  pnlEl.className='m-value mono'+(totalPnl>0?' green':totalPnl<0?' red':'');
+  document.getElementById('d-maxloss').textContent=modal>0?fmt(modal*0.02):'—';
+  const today=new Date().toDateString();
+  const todayPnl=closed.filter(t=>new Date(t.date).toDateString()===today).reduce((a,t)=>a+(t.pnl||0),0);
+  const stEl=document.getElementById('d-status');
+  const stSub=document.getElementById('d-status-sub');
+  if(modal>0){
+    const dd=todayPnl/modal*100;
+    if(dd<=-10){stEl.textContent='🛑 STOP';stEl.className='m-value red';stSub.textContent='Drawdown 10% — istirahat'}
+    else if(todayPnl<0){stEl.textContent='⚠ Hati-hati';stEl.className='m-value amber';stSub.textContent=fmt(todayPnl)+' hari ini'}
+    else{stEl.textContent='✓ Aman';stEl.className='m-value green';stSub.textContent='Kondisi ok'}
+  }else{stEl.textContent='—';stEl.className='m-value';stSub.textContent='Set modal dulu'}
+  // recent
+  const recent=trades.slice(0,5);
+  const rc=document.getElementById('recent-tbl');
+  if(!recent.length){rc.innerHTML='<div class="empty">Belum ada trade.</div>';return}
+  rc.innerHTML='<div class="tbl-wrap"><table><thead><tr><th>Pair</th><th>Dir</th><th>Entry</th><th>SL</th><th>P&L</th><th>Status</th></tr></thead><tbody>'+
+  recent.map(t=>`<tr>
+    <td><span class="pair-chip">${t.pair}</span></td>
+    <td class="${t.dir==='LONG'?'long':'short'}">${t.dir}</td>
+    <td>${fmtN(t.entry)}</td><td>${fmtN(t.sl)}</td>
+    <td class="${(t.pnl||0)>=0?'pnl-pos':'pnl-neg'}">${t.pnl!=null?fmt(t.pnl):'—'}</td>
+    <td><span class="${t.status==='OPEN'?'s-open':t.result==='WIN'?'s-win':t.result==='BE'?'s-be':'s-loss'}">${t.status==='OPEN'?'OPEN':t.result}</span></td>
+  </tr>`).join('')+'</tbody></table></div>'
+}
+
+// ── RISK CALC ──
+function calcRisk(){
+  const entry=parseFloat(document.getElementById('f-entry').value)||0;
+  const sl=parseFloat(document.getElementById('f-sl').value)||0;
+  const tp=parseFloat(document.getElementById('f-tp').value)||0;
+  const lev=parseFloat(document.getElementById('f-lev').value)||1;
+  const size=parseFloat(document.getElementById('f-size').value)||0;
+  if(!entry||!sl||!size)return;
+  const slPct=Math.abs((entry-sl)/entry)*100*lev;
+  const tpPct=tp?Math.abs((tp-entry)/entry)*100*lev:0;
+  const riskRp=size*slPct/100;
+  const profitRp=tp?size*tpPct/100:0;
+  const rr=tp&&riskRp>0?profitRp/riskRp:null;
+  const pctM=modal>0?riskRp/modal*100:null;
+  document.getElementById('r-risk').textContent=fmt(riskRp);
+  document.getElementById('r-profit').textContent=tp?fmt(profitRp):'—';
+  const rrEl=document.getElementById('r-rr');
+  rrEl.textContent=rr?'1 : '+rr.toFixed(2):'—';
+  rrEl.className='rv'+(rr>=2?' safe':rr>=1?' warn':' bad');
+  if(pctM!==null){
+    const pEl=document.getElementById('r-pct');
+    pEl.textContent=pctM.toFixed(1)+'%';
+    pEl.className='rv'+(pctM<=2?' safe':pctM<=5?' warn':' bad');
+    const sEl=document.getElementById('r-status');
+    if(pctM<=2){sEl.textContent='AMAN ✓';sEl.className='rv safe'}
+    else if(pctM<=5){sEl.textContent='HATI-HATI';sEl.className='rv warn'}
+    else{sEl.textContent='TERLALU BESAR';sEl.className='rv bad'}
+  }
+}
+
+// ── SENTIMENT ──
+function setSentiment(s,el){
+  sentiment=s;
+  document.querySelectorAll('.sent-btn').forEach(b=>{b.className='sent-btn'});
+  el.className='sent-btn '+(s==='Bullish'?'bull':s==='Bearish'?'bear':'neutral');
+}
+
+// ── ADD TRADE ──
+async function addTrade(){
+  const pairSel=document.getElementById('f-pair').value;
+  const pair=pairSel==='Other'?document.getElementById('f-pair-custom').value.toUpperCase():pairSel;
+  const entry=document.getElementById('f-entry').value;
+  const sl=document.getElementById('f-sl').value;
+  if(!pair||!entry||!sl){toast('Pair, entry, dan SL wajib diisi','err');return}
+  const t={
+    id:Date.now(),date:new Date().toISOString(),pair,
+    dir:document.getElementById('f-dir').value,
+    entry,sl,tp:document.getElementById('f-tp').value,
+    leverage:document.getElementById('f-lev').value,
+    size:document.getElementById('f-size').value,
+    tf:document.getElementById('f-tf').value,
+    setup:document.getElementById('f-setup').value,
+    market:document.getElementById('f-market').value,
+    sentiment,notes:document.getElementById('f-notes').value,
+    status:'OPEN',result:null,exitPrice:null,pnl:null,reflection:''
+  };
+  trades.unshift(t);save();
+  await saveTrade(t);
+  clearForm();toast(pair+' tersimpan ✓','ok');
+  nav('history',document.querySelectorAll('.nav-btn')[3]);
+}
+
+function clearForm(){
+  ['f-entry','f-sl','f-tp','f-size','f-notes','f-pair-custom'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-pair').value='BTC/USDT';
+  document.getElementById('f-dir').value='LONG';
+  document.getElementById('f-lev').value='1';
+  document.getElementById('f-tf').value='1D';
+  sentiment='';
+  document.querySelectorAll('.sent-btn').forEach(b=>b.className='sent-btn');
+  ['r-risk','r-pct','r-profit','r-rr','r-status'].forEach(id=>{document.getElementById(id).textContent='—';document.getElementById(id).className='rv'});
+}
+
+// ── TABLE ──
+function renderTable(filter){
+  let data=[...trades];
+  if(filter==='open')data=trades.filter(t=>t.status==='OPEN');
+  else if(filter==='win')data=trades.filter(t=>t.result==='WIN');
+  else if(filter==='loss')data=trades.filter(t=>t.result==='LOSS');
+  const tbody=document.getElementById('trade-tbody');
+  if(!data.length){tbody.innerHTML='<tr><td colspan="11"><div class="empty">Tidak ada trade.</div></td></tr>';return}
+  tbody.innerHTML=data.map(t=>{
+    const rr=t.tp&&t.entry&&t.sl?Math.abs((t.tp-t.entry)/(t.entry-t.sl)).toFixed(1):'—';
+    return`<tr>
+      <td>${new Date(t.date).toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}</td>
+      <td><span class="pair-chip">${t.pair}</span></td>
+      <td class="${t.dir==='LONG'?'long':'short'}">${t.dir}</td>
+      <td>${fmtN(t.entry)}</td><td>${fmtN(t.sl)}</td>
+      <td>${t.tp?fmtN(t.tp):'—'}</td>
+      <td>${t.leverage}×</td>
+      <td>${rr!='—'?'1:'+rr:'—'}</td>
+      <td class="${(t.pnl||0)>=0?'pnl-pos':'pnl-neg'}">${t.pnl!=null?fmt(t.pnl):'—'}</td>
+      <td><span class="${t.status==='OPEN'?'s-open':t.result==='WIN'?'s-win':t.result==='BE'?'s-be':'s-loss'}">${t.status==='OPEN'?'OPEN':t.result}</span></td>
+      <td>${t.status==='OPEN'?`<button class="btn btn-ghost btn-sm" onclick="openClose(${t.id})">Tutup</button>`:'<span style="color:var(--text3);font-size:10px">closed</span>'}</td>
+    </tr>`
+  }).join('')
+}
+
+function filterTrades(f,el){
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');renderTable(f);
+}
+
+function openClose(id){
+  closingId=id;
+  document.getElementById('close-panel').style.display='block';
+  document.getElementById('f-exit').value='';
+  document.getElementById('f-reflection').value='';
+  document.getElementById('close-panel').scrollIntoView({behavior:'smooth'});
+}
+function cancelClose(){closingId=null;document.getElementById('close-panel').style.display='none'}
+
+async function closeTrade(){
+  const t=trades.find(x=>x.id==closingId);
+  if(!t)return;
+  const exit=parseFloat(document.getElementById('f-exit').value)||0;
+  const result=document.getElementById('f-result').value;
+  const reflection=document.getElementById('f-reflection').value;
+  let pnl=0;
+  if(exit&&t.size&&t.entry){
+    const diff=(exit-parseFloat(t.entry))/parseFloat(t.entry);
+    const mult=t.dir==='LONG'?1:-1;
+    pnl=Math.round(t.size*diff*mult*t.leverage);
+  }
+  t.status='CLOSED';t.result=result;t.exitPrice=exit;t.pnl=pnl;t.reflection=reflection;
+  save();
+  await updateTradeInDB(closingId,t);
+  cancelClose();renderTable('all');updateDash();
+  toast('Trade ditutup — P&L: '+fmt(pnl),'ok');
+}
+
+// ── CHECKLIST ──
+function toggleCl(el){
+  el.classList.toggle('on');
+  el.querySelector('.cl-box').textContent=el.classList.contains('on')?'✓':'';
+  const total=document.querySelectorAll('.cl-item').length;
+  const checked=document.querySelectorAll('.cl-item.on').length;
+  document.getElementById('cl-count').textContent=checked;
+  const btn=document.getElementById('cl-go-btn');
+  const warn=document.getElementById('cl-warn');
+  const ok=document.getElementById('cl-ok');
+  if(checked===total){btn.style.display='block';ok.style.display='block';warn.style.display='none'}
+  else{btn.style.display='none';ok.style.display='none';warn.style.display=checked>0?'block':'none'}
+}
+function resetCl(){
+  document.querySelectorAll('.cl-item').forEach(el=>{el.classList.remove('on');el.querySelector('.cl-box').textContent=''});
+  document.getElementById('cl-count').textContent='0';
+  ['cl-go-btn','cl-warn','cl-ok'].forEach(id=>document.getElementById(id).style.display='none');
+}
+
+// ── SCREENING SIGNAL ──
+function calcSignal(){
+  const btc=document.getElementById('sc-btc').value;
+  const dom=document.getElementById('sc-dom').value;
+  const us=document.getElementById('sc-us').value;
+  const fund=document.getElementById('sc-fund').value;
+  const oi=document.getElementById('sc-oi').value;
+  const ls=document.getElementById('sc-ls').value;
+  if(!btc&&!us)return;
+
+  let score=0,signals=[],warnings=[];
+
+  // BTC setup
+  if(btc==='bullish')score+=2;
+  else if(btc==='bearish')score-=2;
+  else if(btc==='sideways'){score+=0;warnings.push('BTC sideways — probabilitas altcoin rendah')}
+
+  // BTC Dominance
+  if(dom==='turun'||dom==='turun-drastis')score+=1;
+  else if(dom==='naik')score-=1;
+  else if(dom==='naik-drastis'){score-=2;warnings.push('BTC.D naik drastis — alt season berakhir')}
+
+  // US Stock
+  if(us==='hijau')score+=1;
+  else if(us==='merah'){score-=1;warnings.push('Pre-market US merah — risiko BTC turun')}
+
+  // Funding
+  if(fund==='positif-tinggi'){score-=1;warnings.push('Funding tinggi — market terlalu long, rawan reversal')}
+  else if(fund==='negatif')score+=0.5;
+
+  // OI
+  if(oi==='naik')score+=0.5;
+  else if(oi==='turun')score-=0.5;
+
+  // Long/Short
+  if(ls==='dominan-long'){score-=0.5;warnings.push('Long terlalu dominan — waspadai long squeeze')}
+  else if(ls==='dominan-short'){score+=0.5;signals.push('Short squeeze mungkin terjadi')}
+
+  const el=document.getElementById('signal-result');
+  const icon=document.getElementById('sig-icon');
+  const title=document.getElementById('sig-title');
+  const desc=document.getElementById('sig-desc');
+  el.style.display='flex';
+  el.className='signal-result ';
+
+  if(score>=2.5){
+    el.classList.add('bull');icon.textContent='📈';title.textContent='Kondisi BULLISH — Ok untuk Long';
+    desc.textContent='Mayoritas indikator mendukung posisi long. '+(warnings.length?'Tetap waspadai: '+warnings.join('; ')+'.':'Tetap gunakan SL sesuai aturan.')
+  }else if(score<=-2.5){
+    el.classList.add('bear');icon.textContent='📉';title.textContent='Kondisi BEARISH — Prioritaskan Short atau Tunggu';
+    desc.textContent='Kondisi tidak mendukung long. '+(warnings.length?warnings.join('; ')+'. ':'')+'Pertimbangkan short atau tunggu konfirmasi.'
+  }else if(score>=1){
+    el.classList.add('bull');icon.textContent='🟡';title.textContent='Moderat Bullish — Lanjutkan Hati-hati';
+    desc.textContent='Sinyal bullish tapi tidak kuat. '+(warnings.length?warnings.join('; ')+'. ':'')+'Sizing lebih kecil disarankan.'
+  }else if(score<=-1){
+    el.classList.add('warn');icon.textContent='⚠️';title.textContent='Moderat Bearish — Lebih Baik Tunggu';
+    desc.textContent='Kondisi kurang mendukung. '+(warnings.join('; ')||'Tunggu setup lebih jelas sebelum entry.')
+  }else{
+    el.classList.add('warn');icon.textContent='↔️';title.textContent='Sideways / Mixed — Tidak Ada Setup Jelas';
+    desc.textContent='Sinyal bercampur. Lebih baik tunggu konfirmasi sebelum masuk posisi. '+(warnings.length?warnings.join('; ')+'.':'')
+  }
+}
+
+// ── CORRELATION TABS ──
+function showCorrTab(name,el){
+  ['btc','stock','dom'].forEach(k=>{
+    document.getElementById('corr-'+k).style.display=k===name?'block':'none';
+  });
+  document.querySelectorAll('.tab2').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── WATCHLIST ──
+function addWl(){
+  const v=document.getElementById('wl-input').value.trim().toUpperCase();
+  if(!v)return;
+  if(!watchlist.includes(v))watchlist.push(v);
+  localStorage.setItem('tj_wl',JSON.stringify(watchlist));
+  document.getElementById('wl-input').value='';
+  renderWatchlist();
+}
+function removeWl(pair){
+  watchlist=watchlist.filter(p=>p!==pair);
+  localStorage.setItem('tj_wl',JSON.stringify(watchlist));
+  renderWatchlist();
+}
+function renderWatchlist(){
+  const el=document.getElementById('watchlist');
+  if(!watchlist.length){el.innerHTML='<span style="font-size:11px;color:var(--text3)">Belum ada pair di watchlist.</span>';return}
+  el.innerHTML=watchlist.map(p=>`<div class="wl-chip"><span class="pair-chip" style="font-size:10px">${p}</span><button class="wl-remove" onclick="removeWl('${p}')">×</button></div>`).join('')
+}
+
+// ── TOAST ──
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast show '+(type==='ok'?'ok':type==='err'?'err':'');
+  setTimeout(()=>el.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
